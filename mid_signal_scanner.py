@@ -56,12 +56,8 @@ class MidStrategyScanner:
         try:
             self.rejection_stats['total_scanned'] += 1
             
-            # Fetch data
-            df = self.data_fetcher.fetch_stock_data(
-                symbol, 
-                period='5d', 
-                interval=config.TIMEFRAME
-            )
+            # Fetch data (use intraday for better reliability)
+            df = self.data_fetcher.fetch_intraday_data(symbol)
             
             if df is None:
                 self.rejection_stats['no_data'] += 1
