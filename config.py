@@ -14,7 +14,7 @@ ADMIN_USER_ID = 6837532865                    # Your Telegram user ID
 # TRADING PARAMETERS
 # ============================================
 TIMEFRAME = '5m'  # 5-minute candles
-SCAN_INTERVAL = 30  # Scan every 30 seconds
+SCAN_INTERVAL = 300  # Scan every 30 seconds
 
 # Stop Loss and Targets (in percentage)
 STOP_LOSS_PERCENTAGE = 1.5    # 1.5% stop loss
