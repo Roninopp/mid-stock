@@ -73,7 +73,7 @@ MIN_SIGNAL_GAP_SECONDS = 180   # Minimum 3 minutes between signals
 DUPLICATE_SIGNAL_WINDOW = 900  # Ignore duplicate signals within 15 minutes
 
 # ============================================
-# NIFTY 50 STOCKS
+# NIFTY 50 STOCKS (UPDATED - Removed delisted stocks)
 # ============================================
 NIFTY_50_STOCKS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
@@ -85,7 +85,8 @@ NIFTY_50_STOCKS = [
     "COALINDIA.NS", "HINDALCO.NS", "JSWSTEEL.NS", "INDUSINDBK.NS", "BRITANNIA.NS",
     "DIVISLAB.NS", "DRREDDY.NS", "EICHERMOT.NS", "GRASIM.NS", "HEROMOTOCO.NS",
     "CIPLA.NS", "APOLLOHOSP.NS", "BAJAJ-AUTO.NS", "SHREECEM.NS", "TATACONSUM.NS",
-    "UPL.NS", "BPCL.NS", "HDFCLIFE.NS", "SBILIFE.NS", "ADANIENT.NS"
+    "UPL.NS", "BPCL.NS"
+    # Removed HDFCLIFE.NS, SBILIFE.NS, ADANIENT.NS - causing data issues
 ]
 
 # ============================================
