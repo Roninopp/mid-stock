@@ -1,6 +1,6 @@
 """
-Mid-Strategy Signal Scanner
-Combines: Liquidity Sweep + False Breakout + Engulfing patterns
+Mid-Strategy Signal Scanner (DIAGNOSTIC VERSION)
+Shows detailed rejection reasons to debug 0 signals issue
 """
 
 import pandas as pd
@@ -29,8 +29,23 @@ class MidStrategyScanner:
         self.scan_interval = config.SCAN_INTERVAL
         self.max_workers = config.MAX_WORKERS
         
+        # DIAGNOSTIC: Track rejection reasons
+        self.rejection_stats = {
+            'no_data': 0,
+            'insufficient_candles': 0,
+            'sweep_detected': 0,
+            'sweep_rejected': 0,
+            'breakout_detected': 0,
+            'breakout_rejected': 0,
+            'engulfing_detected': 0,
+            'engulfing_rejected': 0,
+            'low_rr_ratio': 0,
+            'total_scanned': 0
+        }
+        
         logger.info(f"🚀 Mid-Strategy Scanner initialized with {len(self.stocks)} stocks")
         logger.info("📊 Strategies: Liquidity Sweep, False Breakout, Engulfing at Levels")
+        logger.info("🔍 DIAGNOSTIC MODE: Detailed rejection tracking enabled")
     
     @log_exceptions
     def scan_stock(self, symbol):
@@ -39,6 +54,8 @@ class MidStrategyScanner:
         Returns: signal dict if found, None otherwise
         """
         try:
+            self.rejection_stats['total_scanned'] += 1
+            
             # Fetch data
             df = self.data_fetcher.fetch_stock_data(
                 symbol, 
@@ -46,10 +63,17 @@ class MidStrategyScanner:
                 interval=config.TIMEFRAME
             )
             
-            if df is None or len(df) < 30:
+            if df is None:
+                self.rejection_stats['no_data'] += 1
+                logger.debug(f"❌ {symbol}: No data fetched")
                 return None
             
-            # Calculate support and resistance (needed for multiple strategies)
+            if len(df) < 30:
+                self.rejection_stats['insufficient_candles'] += 1
+                logger.debug(f"❌ {symbol}: Only {len(df)} candles (need 30+)")
+                return None
+            
+            # Calculate support and resistance
             support_levels, resistance_levels = self.indicator_analyzer.calculate_support_resistance(df)
             
             current_price = df['Close'].iloc[-1]
@@ -57,27 +81,54 @@ class MidStrategyScanner:
             
             # STRATEGY 1: Liquidity Sweep (PRIORITY)
             sweep_signal = self.liquidity_detector.detect_sweep(df)
-            if sweep_signal and self.liquidity_detector.validate_sweep(df, sweep_signal):
-                signal = self._build_signal(df, symbol, sweep_signal, support_levels, resistance_levels)
-                if signal:
-                    logger.info(f"💎 Liquidity Sweep signal found: {symbol}")
-                    return signal
+            if sweep_signal:
+                self.rejection_stats['sweep_detected'] += 1
+                logger.info(f"🔍 {symbol}: Liquidity Sweep detected!")
+                
+                if self.liquidity_detector.validate_sweep(df, sweep_signal):
+                    signal = self._build_signal(df, symbol, sweep_signal, support_levels, resistance_levels)
+                    if signal:
+                        logger.info(f"💎 Liquidity Sweep signal found: {symbol}")
+                        return signal
+                    else:
+                        logger.debug(f"❌ {symbol}: Sweep signal rejected in _build_signal")
+                else:
+                    self.rejection_stats['sweep_rejected'] += 1
+                    logger.debug(f"❌ {symbol}: Sweep validation failed")
             
             # STRATEGY 2: False Breakout
             breakout_signal = self.breakout_detector.detect_false_breakout(df, support_levels, resistance_levels)
-            if breakout_signal and self.breakout_detector.validate_false_breakout(df, breakout_signal):
-                signal = self._build_signal(df, symbol, breakout_signal, support_levels, resistance_levels)
-                if signal:
-                    logger.info(f"💎 False Breakout signal found: {symbol}")
-                    return signal
+            if breakout_signal:
+                self.rejection_stats['breakout_detected'] += 1
+                logger.info(f"🔍 {symbol}: False Breakout detected!")
+                
+                if self.breakout_detector.validate_false_breakout(df, breakout_signal):
+                    signal = self._build_signal(df, symbol, breakout_signal, support_levels, resistance_levels)
+                    if signal:
+                        logger.info(f"💎 False Breakout signal found: {symbol}")
+                        return signal
+                    else:
+                        logger.debug(f"❌ {symbol}: Breakout signal rejected in _build_signal")
+                else:
+                    self.rejection_stats['breakout_rejected'] += 1
+                    logger.debug(f"❌ {symbol}: Breakout validation failed")
             
             # STRATEGY 3: Engulfing at Levels
             engulfing_signal = self.engulfing_detector.detect_engulfing(df, support_levels, resistance_levels)
-            if engulfing_signal and self.engulfing_detector.validate_engulfing(df, engulfing_signal):
-                signal = self._build_signal(df, symbol, engulfing_signal, support_levels, resistance_levels)
-                if signal:
-                    logger.info(f"💎 Engulfing signal found: {symbol}")
-                    return signal
+            if engulfing_signal:
+                self.rejection_stats['engulfing_detected'] += 1
+                logger.info(f"🔍 {symbol}: Engulfing detected!")
+                
+                if self.engulfing_detector.validate_engulfing(df, engulfing_signal):
+                    signal = self._build_signal(df, symbol, engulfing_signal, support_levels, resistance_levels)
+                    if signal:
+                        logger.info(f"💎 Engulfing signal found: {symbol}")
+                        return signal
+                    else:
+                        logger.debug(f"❌ {symbol}: Engulfing signal rejected in _build_signal")
+                else:
+                    self.rejection_stats['engulfing_rejected'] += 1
+                    logger.debug(f"❌ {symbol}: Engulfing validation failed")
             
             return None
             
@@ -113,7 +164,8 @@ class MidStrategyScanner:
             
             # Check minimum RR ratio
             if rr_ratio < config.MIN_RISK_REWARD_RATIO:
-                logger.debug(f"Signal rejected for {symbol}: RR {rr_ratio:.2f} too low")
+                self.rejection_stats['low_rr_ratio'] += 1
+                logger.debug(f"❌ {symbol}: RR {rr_ratio:.2f} too low (min: {config.MIN_RISK_REWARD_RATIO})")
                 return None
             
             # Get volume confirmation
@@ -155,6 +207,8 @@ class MidStrategyScanner:
             
             signal['confirmations'] = confirmations
             
+            logger.info(f"✅ {symbol}: Signal built successfully (RR: {rr_ratio:.2f})")
+            
             return signal
             
         except Exception as e:
@@ -169,6 +223,9 @@ class MidStrategyScanner:
         """
         start_time = time.time()
         signals = []
+        
+        # Reset rejection stats for this scan
+        self.rejection_stats = {k: 0 for k in self.rejection_stats.keys()}
         
         logger.info(f"🔍 Scanning {len(self.stocks)} stocks...")
         
@@ -193,6 +250,32 @@ class MidStrategyScanner:
         duration = time.time() - start_time
         performance_tracker.record_scan_time(duration)
         
+        # DIAGNOSTIC: Print rejection summary
+        self._print_rejection_summary()
+        
         logger.info(f"✅ Scan complete in {duration:.2f}s | Signals found: {len(signals)}")
         
         return signals
+    
+    def _print_rejection_summary(self):
+        """Print detailed rejection statistics"""
+        stats = self.rejection_stats
+        
+        logger.info("=" * 50)
+        logger.info("📊 SCAN SUMMARY:")
+        logger.info(f"Total stocks scanned: {stats['total_scanned']}")
+        logger.info(f"No data: {stats['no_data']}")
+        logger.info(f"Insufficient candles: {stats['insufficient_candles']}")
+        logger.info("")
+        logger.info("🔍 PATTERN DETECTION:")
+        logger.info(f"Sweeps detected: {stats['sweep_detected']} | Rejected: {stats['sweep_rejected']}")
+        logger.info(f"Breakouts detected: {stats['breakout_detected']} | Rejected: {stats['breakout_rejected']}")
+        logger.info(f"Engulfing detected: {stats['engulfing_detected']} | Rejected: {stats['engulfing_rejected']}")
+        logger.info("")
+        logger.info("❌ REJECTION REASONS:")
+        logger.info(f"Low RR ratio: {stats['low_rr_ratio']}")
+        logger.info("=" * 50)
+    
+    def get_rejection_stats(self):
+        """Get rejection statistics"""
+        return self.rejection_stats.copy()
