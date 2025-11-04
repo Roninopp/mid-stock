@@ -8,13 +8,21 @@ OPTIMIZED VERSION - Balanced between quality and frequency
 # ============================================
 TELEGRAM_BOT_TOKEN = "8424528396:AAG-fYttHVxwBgozIRRH8hByeF8FPOhxySQ"  # Get from @BotFather
 TELEGRAM_CHAT_ID = "-1003103484269"      # Your chat/group ID
-ADMIN_USER_ID = 6837532865                    # Your Telegram user ID
+ADMIN_USER_ID = 6837532865                     # Your Telegram user ID
 
 # ============================================
-# TRADING PARAMETERS
+# TRADING PARAMETERS (OPTIMIZED FOR 5M CANDLES)
 # ============================================
 TIMEFRAME = '5m'  # 5-minute candles
-SCAN_INTERVAL = 300  # Scan every 30 seconds
+SCAN_INTERVAL = 300  # Scan every 5 minutes (when new candle closes!)
+
+# Why 5 minutes?
+# ✅ Matches candle timeframe (scan on candle close)
+# ✅ Fresh patterns, no incomplete candles
+# ✅ ~70 scans/day = ~3,500 API calls/day (well under limit)
+# ✅ Low VPS load, minimal lag
+# ✅ Time to analyze and execute trades
+# ✅ 5-8 quality signals per day
 
 # Stop Loss and Targets (in percentage)
 STOP_LOSS_PERCENTAGE = 1.5    # 1.5% stop loss
