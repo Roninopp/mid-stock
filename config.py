@@ -6,7 +6,7 @@ OPTIMIZED VERSION - Balanced between quality and frequency
 # ============================================
 # TELEGRAM CONFIGURATION
 # ============================================
-TELEGRAM_BOT_TOKEN = "8424528396:AAG-fYttHVxwBgozIRRH8hByeF8FPOhxySQ"  # Get from @BotFather
+TELEGRAM_BOT_TOKEN = "8424528396:AAHs5z4mDnFb8aA8eoW5xfSJMc-OP9X_iu4"  # Get from @BotFather
 TELEGRAM_CHAT_ID = "-1003103484269"      # Your chat/group ID
 ADMIN_USER_ID = 6837532865                     # Your Telegram user ID
 
