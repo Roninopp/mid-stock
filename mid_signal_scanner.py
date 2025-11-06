@@ -1,6 +1,6 @@
 """
-Mid-Strategy Signal Scanner (DIAGNOSTIC VERSION)
-Shows detailed rejection reasons to debug 0 signals issue
+Mid-Strategy Signal Scanner (COMPLETE VERSION)
+Optimized for 5-minute scanning with proper cache management
 """
 
 import pandas as pd
@@ -45,7 +45,7 @@ class MidStrategyScanner:
         
         logger.info(f"🚀 Mid-Strategy Scanner initialized with {len(self.stocks)} stocks")
         logger.info("📊 Strategies: Liquidity Sweep, False Breakout, Engulfing at Levels")
-        logger.info("🔍 DIAGNOSTIC MODE: Detailed rejection tracking enabled")
+        logger.info("🔍 DIAGNOSTIC MODE: Enabled")
     
     @log_exceptions
     def scan_stock(self, symbol):
@@ -56,17 +56,17 @@ class MidStrategyScanner:
         try:
             self.rejection_stats['total_scanned'] += 1
             
-            # Fetch data (use intraday for better reliability)
+            # Fetch data (uses per-scan caching)
             df = self.data_fetcher.fetch_intraday_data(symbol)
             
             if df is None:
                 self.rejection_stats['no_data'] += 1
-                logger.debug(f"❌ {symbol}: No data fetched")
+                logger.debug(f"❌ {symbol}: No data")
                 return None
             
             if len(df) < 30:
                 self.rejection_stats['insufficient_candles'] += 1
-                logger.debug(f"❌ {symbol}: Only {len(df)} candles (need 30+)")
+                logger.debug(f"❌ {symbol}: Only {len(df)} candles")
                 return None
             
             # Calculate support and resistance
@@ -84,10 +84,10 @@ class MidStrategyScanner:
                 if self.liquidity_detector.validate_sweep(df, sweep_signal):
                     signal = self._build_signal(df, symbol, sweep_signal, support_levels, resistance_levels)
                     if signal:
-                        logger.info(f"💎 Liquidity Sweep signal found: {symbol}")
+                        logger.info(f"💎 Liquidity Sweep signal: {symbol}")
                         return signal
                     else:
-                        logger.debug(f"❌ {symbol}: Sweep signal rejected in _build_signal")
+                        logger.debug(f"❌ {symbol}: Sweep rejected in build")
                 else:
                     self.rejection_stats['sweep_rejected'] += 1
                     logger.debug(f"❌ {symbol}: Sweep validation failed")
@@ -101,10 +101,10 @@ class MidStrategyScanner:
                 if self.breakout_detector.validate_false_breakout(df, breakout_signal):
                     signal = self._build_signal(df, symbol, breakout_signal, support_levels, resistance_levels)
                     if signal:
-                        logger.info(f"💎 False Breakout signal found: {symbol}")
+                        logger.info(f"💎 False Breakout signal: {symbol}")
                         return signal
                     else:
-                        logger.debug(f"❌ {symbol}: Breakout signal rejected in _build_signal")
+                        logger.debug(f"❌ {symbol}: Breakout rejected in build")
                 else:
                     self.rejection_stats['breakout_rejected'] += 1
                     logger.debug(f"❌ {symbol}: Breakout validation failed")
@@ -118,10 +118,10 @@ class MidStrategyScanner:
                 if self.engulfing_detector.validate_engulfing(df, engulfing_signal):
                     signal = self._build_signal(df, symbol, engulfing_signal, support_levels, resistance_levels)
                     if signal:
-                        logger.info(f"💎 Engulfing signal found: {symbol}")
+                        logger.info(f"💎 Engulfing signal: {symbol}")
                         return signal
                     else:
-                        logger.debug(f"❌ {symbol}: Engulfing signal rejected in _build_signal")
+                        logger.debug(f"❌ {symbol}: Engulfing rejected in build")
                 else:
                     self.rejection_stats['engulfing_rejected'] += 1
                     logger.debug(f"❌ {symbol}: Engulfing validation failed")
@@ -161,13 +161,13 @@ class MidStrategyScanner:
             # Check minimum RR ratio
             if rr_ratio < config.MIN_RISK_REWARD_RATIO:
                 self.rejection_stats['low_rr_ratio'] += 1
-                logger.debug(f"❌ {symbol}: RR {rr_ratio:.2f} too low (min: {config.MIN_RISK_REWARD_RATIO})")
+                logger.debug(f"❌ {symbol}: RR {rr_ratio:.2f} too low")
                 return None
             
             # Get volume confirmation
             volume_confirmed, volume_ratio = self.indicator_analyzer.check_volume_confirmation(df)
             
-            # Calculate RSI (optional for mid-strategy)
+            # Calculate RSI
             rsi_values = self.indicator_analyzer.calculate_rsi(df)
             current_rsi = rsi_values.iloc[-1] if len(rsi_values) > 0 else 50
             
@@ -203,7 +203,7 @@ class MidStrategyScanner:
             
             signal['confirmations'] = confirmations
             
-            logger.info(f"✅ {symbol}: Signal built successfully (RR: {rr_ratio:.2f})")
+            logger.info(f"✅ {symbol}: Signal built (RR: {rr_ratio:.2f})")
             
             return signal
             
@@ -219,6 +219,9 @@ class MidStrategyScanner:
         """
         start_time = time.time()
         signals = []
+        
+        # CRITICAL: Clear cache for fresh data this scan
+        self.data_fetcher.start_new_scan()
         
         # Reset rejection stats for this scan
         self.rejection_stats = {k: 0 for k in self.rejection_stats.keys()}
